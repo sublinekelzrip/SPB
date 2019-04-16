@@ -1,0 +1,26 @@
+f := x^8+x^7+x^2+x+1 mod 2;
+v:=4;
+R:=x^v;
+R1:=x^7+x^6+x^1+1;
+# R1 is 1/x
+Ri:=sort(expand(R1^v mod 2,  x)  mod 2);
+
+
+M:=sort(expand(R*Ri mod 2,  x)  mod 2);
+r := rem(M, f, x) mod 2;
+# Ensure R*Ri=1;
+
+A := a0 +a1*x +a2*x^2 +a3*x^3 +a4*x^4 +a5*x^5 +a6*x^6 +a7*x^7 mod 2;
+B := b0 +b1*x +b2*x^2 +b3*x^3 +b4*x^4 +b5*x^5 +b6*x^6 +b7*x^7 mod 2;
+
+rt:=sort(expand(A*Ri*B*Ri*R mod 2,  x)  mod 2);
+result := rem(rt, f, x) mod 2;
+
+sort(coeff(result, x, 0)) mod 2;
+sort(coeff(result, x, 1)) mod 2;
+sort(coeff(result, x, 2)) mod 2;
+sort(coeff(result, x, 3)) mod 2;
+sort(coeff(result, x, 4)) mod 2;
+sort(coeff(result, x, 5)) mod 2;
+sort(coeff(result, x, 6)) mod 2;
+sort(coeff(result, x, 7)) mod 2;
