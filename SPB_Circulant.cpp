@@ -34,7 +34,7 @@ int DWSZ, BLK_NUM, Highest_time_of_f, v;
 
 BYTE TBL[65536], TBH[65536];
 
-#define SET_BASIC_PARAMETERS	{ 	f[0] = 391; v = 8; Highest_time_of_f = 8;					\
+#define SET_BASIC_PARAMETERS	{ 	f[0] = 391; v = 16; Highest_time_of_f = 8;					\
 								if ( 0 != (N%W) ) DWSZ = ((N/W) + 1); else DWSZ=N/W;	\
 								if ( 0 == (N % BLK_SZ) )								\
 								  BLK_NUM = ((N/BLK_SZ));								\
@@ -393,8 +393,8 @@ int main(){
 
 	for(int i = 0; i < cnt; i++)
 	{
-		// if(spb_vec[i].XOR_num_all <= 592 && spb_vec[i].XOR_delay_all < 8)  // 152 + 440
-		if(spb_vec[i].XOR_num_in <= 130)	
+		 if(spb_vec[i].XOR_num_all <= 592 && spb_vec[i].XOR_delay_all < 8)  // 152 + 440
+		//if(spb_vec[i].XOR_num_in <= 130)	
 			fout << spb_vec[i].vec_in << spb_vec[i].XOR_num_in << " " << spb_vec[i].XOR_delay_in << " "
 			     << spb_vec[i].vec_out << spb_vec[i].XOR_num_out << " " << spb_vec[i].XOR_delay_out << "  "
 			 	 << spb_vec[i].XOR_num_all << " " << spb_vec[i].XOR_delay_all << "\n";

@@ -34,7 +34,11 @@ int DWSZ, BLK_NUM, Highest_time_of_f;
 
 BYTE TBL[65536], TBH[65536];
 
-#define SET_BASIC_PARAMETERS	{ 	f[0] = 451; Highest_time_of_f = 8;					\
+
+int Nowf[30]={0x11d};
+
+
+#define SET_BASIC_PARAMETERS	{ 	f[0] = 0x1c3 ; Highest_time_of_f = 8;					\
 								if ( 0 != (N%W) ) DWSZ = ((N/W) + 1); else DWSZ=N/W;	\
 								if ( 0 == (N % BLK_SZ) )								\
 								  BLK_NUM = ((N/BLK_SZ));								\
@@ -71,7 +75,6 @@ void poly_mul(DWORD *c, DWORD *a, DWORD *b)
 	int zqa, i, j, h;
 	BYTE *ba = (BYTE*)a, *bb = (BYTE*)b;
 	DWORD *pd, k;
-
 	pd = (DWORD*)r;
 	for(i = 0; i < 2 * MAXDWSZ; i++) pd[i] = 0;
 
@@ -94,7 +97,6 @@ void poly_mod(DWORD *c, DWORD *ff)
 				shift_bits = j + 8 * i - Highest_time_of_f;
 				if(shift_bits < 0) return;
 				(*c) ^= ((*ff) << shift_bits);
-				// cout << shift_bits << " *** " << (*c) << endl;
 			}
 		}
 	}	
@@ -103,18 +105,42 @@ void poly_mod(DWORD *c, DWORD *ff)
 #define Matrix_Msize 10
 #define Matrix_size 4
 #define Reverse_Mtrx_Hmwt 0
-#define txt_name "1c3_PB.txt" 
+#define txt_name "c_allt.txt" 
 
-//87610
-int exprAB[8][8][8] = {{{0,-1}, {7,-1},   {6,7,-1},   {5,6,-1},   {4,5,7,-1},   {3,4,6,7,-1},   {2,3,5,6,-1},     {1,2,4,5,7,-1}},
-					   {{1,-1}, {0,7,-1}, {6,-1},     {5,7,-1},   {4,6,7,-1},   {3,5,6,-1},     {2,4,5,7,-1},     {1,3,4,6,7,-1}},
-					   {{2,-1}, {1,-1},   {0,7,-1},   {6,-1},     {5,7,-1},     {4,6,7,-1},     {3,5,6,-1},       {2,4,5,7,-1}},
-					   {{3,-1}, {2,-1},   {1,-1},     {0,7,-1},   {6,-1},       {5,7,-1},       {4,6,7,-1},       {3,5,6,-1}},
-					   {{4,-1}, {3,-1},   {2,-1},     {1,-1},     {0,7,-1},     {6,-1},         {5,7,-1},         {4,6,7,-1}},
-					   {{5,-1}, {4,-1},   {3,-1},     {2,-1},     {1,-1},       {0,7,-1},       {6,-1},           {5,7,-1}},
-					   {{6,-1}, {5,7,-1}, {4,6,7,-1}, {3,5,6,-1}, {2,4,5,7,-1}, {1,3,4,6,7,-1}, {0,2,3,5,6,7,-1}, {1,2,4,5,6,7,-1}},
-					   {{7,-1}, {6,7,-1}, {5,6,-1},   {4,5,7,-1}, {3,4,6,7,-1}, {2,3,5,6,-1},   {1,2,4,5,7,-1},   {0,1,3,4,6,-1}}};
+//87610 
+int mul[260][260],exprAB[260][8][8][10],now[260][8][10],ny[260];
 
+
+void genexpr(int R)
+{
+	int mod=f[0];
+    for(int i=0;i<256;i++)
+        for(int j=0;j<256;j++)
+        {
+            int x=i,y=j,z=0;
+            while(y)
+            {
+                if(y&1)
+                    z^=x;
+                x=(x<<1)^((((x<<1)&256))?mod:0);
+                y>>=1;
+            }
+            mul[i][j]=z;
+            if(z==1)
+                ny[i]=j;
+        }
+    for(int i=0;i<8;i++)
+        for(int j=0;j<8;j++)
+            for(int k=0;k<8;k++)
+                if(mul[ny[R]][mul[1<<i][1<<j]]&(1<<k))
+                {
+                    exprAB[R][k][j][now[R][k][j]]=i;
+                    now[R][k][j]++;
+                }
+    for(int i=0;i<8;i++)
+        for(int j=0;j<8;j++)
+            exprAB[R][i][j][now[R][i][j]]=-1;
+}
 int coefficient[4][8] = {0};
 
 void Initialize_c()
@@ -133,7 +159,7 @@ struct aa
     int XOR_delay_in, XOR_delay_out;
     int XOR_num_all, XOR_delay_all;
     string vec_in, vec_out;
-}pb_vec[32768];
+}pb_vec[260][32768];
 
 bool cmp(const aa &x, const aa &y) 
 {
@@ -162,7 +188,7 @@ int count_XOR_delay()
 	return max_delay;
 }
 
-void count_XOR_num(DWORD dw, int order, int is_vec_in, int row)
+void count_XOR_num(DWORD dw, int order, int is_vec_in, int row, int R)
 {
 	int arr[8] = {0}; int aaa = dw;
 	int w = 0;
@@ -178,10 +204,10 @@ void count_XOR_num(DWORD dw, int order, int is_vec_in, int row)
 		for(int j = 0; j < expr_size; j++)
 		{
 			int XOR_num_per_ele = 0;
-			for(int k = 0; k < ele_num; k++)
+			for(int k = 0; k <= ele_num; k++)
 			{
-				if(exprAB[i][j][k] == -1) break;
-				if(arr[exprAB[i][j][k]] == 1) XOR_num_per_ele ^= 1;
+				if(exprAB[R][i][j][k] == -1) break;
+				if(arr[exprAB[R][i][j][k]] == 1) XOR_num_per_ele ^= 1;
 			}
 			XOR_num_per_row += XOR_num_per_ele;
 		}
@@ -189,8 +215,8 @@ void count_XOR_num(DWORD dw, int order, int is_vec_in, int row)
 		coefficient[row][i] = XOR_num_per_row;
 	}
 	XOR_num -= 8;
-	if(is_vec_in == 1) pb_vec[order].XOR_num_in += XOR_num;
-	else if(is_vec_in == 0) pb_vec[order].XOR_num_out += XOR_num;	
+	if(is_vec_in == 1) pb_vec[R][order].XOR_num_in += XOR_num;
+	else if(is_vec_in == 0) pb_vec[R][order].XOR_num_out += XOR_num;	
 }
 
 int getA(DWORD arcs[Matrix_Msize][Matrix_Msize], int n)//按第一行展开计算|A|
@@ -281,7 +307,7 @@ void inverse_vec(DWORD input_array[Matrix_size])
     getAStart(arcs, Matrix_size, astar);
 
     // multiplicative inverse of a
-	MI_a[0] = 1; 
+	MI_a[0] = 1;  
 	b[0] = a;
     for(int kk = 0; kk < 7; kk++)
     {        	
@@ -309,17 +335,19 @@ void inverse_vec(DWORD input_array[Matrix_size])
 		hm_num += Hamming_weight(*b);
     }
 
-	if(hm_num >= Reverse_Mtrx_Hmwt)
+	for(int R=1;R<=255;R++)
 	{
-		pb_vec[cnt].rhmw = hm_num;	
+		pb_vec[R][cnt].rhmw = hm_num;	
 	    /*   PB_in   */
-		MI_a[0] = 16; hm_num = 0;
-		pb_vec[cnt].vec_in += "(";
+		MI_a[0] = R; hm_num = 0;
+		pb_vec[R][cnt].vec_in += "(";
 		Initialize_c();
 		for(int i = 0; i < Matrix_size; i++)
 		{
-			b[0] = input_array[i];			
-			count_XOR_num((*b), cnt, 1, i);
+			b[0] = input_array[i];	
+			poly_mul(b, MI_a, b);   
+			poly_mod(b, f);		
+			count_XOR_num((*b), cnt, 1, i,R);
 		    char str[10];
 		    itoa((*b), str, 16);	
 		    if(strlen(str) < 2)
@@ -328,39 +356,43 @@ void inverse_vec(DWORD input_array[Matrix_size])
 		    	strcat(addzero, str); 
 		    	strcpy(str, addzero);
 		    }
-			pb_vec[cnt].vec_in += str;
+			pb_vec[R][cnt].vec_in += str;
 			hm_num += Hamming_weight(*b);	
-			if(i != Matrix_size - 1) pb_vec[cnt].vec_in += " ";
+			if(i != Matrix_size - 1) pb_vec[R][cnt].vec_in += " ";
 		}
-		pb_vec[cnt].vec_in += ") "; pb_vec[cnt].hmw = hm_num;
-		pb_vec[cnt].XOR_num_in = 4 * (pb_vec[cnt].XOR_num_in + 3 * 8);
-		pb_vec[cnt].XOR_delay_in = count_XOR_delay();
+		pb_vec[R][cnt].vec_in += ") "; pb_vec[R][cnt].hmw = hm_num;
+		pb_vec[R][cnt].XOR_num_in = 4 * (pb_vec[R][cnt].XOR_num_in + 3 * 8);
+		pb_vec[R][cnt].XOR_delay_in = count_XOR_delay();
 
 		/*   PB_out   */
-		pb_vec[cnt].vec_out += " (";
+		
+		pb_vec[R][cnt].vec_out += " (";
 	    Initialize_c();
 	    for(int j = 0; j < Matrix_size; j++)
 	    {
-	    	count_XOR_num(astar[0][j], cnt, 0, j);
+			b[0] = astar[0][j];	
+			poly_mul(b, MI_a, b);   
+			poly_mod(b, f);		
+			count_XOR_num((*b), cnt, 0, j,R);
 		    char str[10];
-		    itoa(astar[0][j], str, 16);	
+		    itoa((*b), str, 16);	
 		    if(strlen(str) < 2)
 		    {
 		    	char addzero[10] = "0";
 		    	strcat(addzero, str); 
 		    	strcpy(str, addzero);
 		    }
-	    	pb_vec[cnt].vec_out += str;
-	    	if(j != Matrix_size - 1) pb_vec[cnt].vec_out += " ";
+	    	pb_vec[R][cnt].vec_out += str;
+	    	if(j != Matrix_size - 1) pb_vec[R][cnt].vec_out += " ";
 	    }
-	    pb_vec[cnt].vec_out += ") ";
-	    pb_vec[cnt].XOR_num_out = 4 * (pb_vec[cnt].XOR_num_out + 3 * 8);
-	    pb_vec[cnt].XOR_delay_out = count_XOR_delay();
+	    pb_vec[R][cnt].vec_out += ") ";
+	    pb_vec[R][cnt].XOR_num_out = 4 * (pb_vec[R][cnt].XOR_num_out + 3 * 8);
+	    pb_vec[R][cnt].XOR_delay_out = count_XOR_delay();
 
-	    pb_vec[cnt].XOR_num_all = pb_vec[cnt].XOR_num_in + pb_vec[cnt].XOR_num_out;
-	    pb_vec[cnt].XOR_delay_all = pb_vec[cnt].XOR_delay_in + pb_vec[cnt].XOR_delay_out;
-	    cnt++;
+	    pb_vec[R][cnt].XOR_num_all = pb_vec[R][cnt].XOR_num_in + pb_vec[R][cnt].XOR_num_out;
+	    pb_vec[R][cnt].XOR_delay_all = pb_vec[R][cnt].XOR_delay_in + pb_vec[R][cnt].XOR_delay_out ;
 	}
+	cnt++;
 }
 
 int main(){
@@ -370,27 +402,46 @@ int main(){
 	DWORD a[4] = {0}; a[2] = 1; a[3] = 1; 
 	ofstream fout;
 	fout.open(txt_name, ios::trunc);
-
-	int Max_ele = 256;
-	for(int i = 2; i < Max_ele; i++)
+	for(int tmp=0;tmp<1;tmp++)
 	{
-		a[0] = i;
-		for(int j = i; j < Max_ele; j++)
+		f[0]=Nowf[tmp];
+		memset(now,0,sizeof(now));
+		//memset(pb_vec,0,sizeof(pb_vec));
+		for(int R=1;R<=255;R++)
+			for(int i=0;i<cnt;i++)
+			{
+				pb_vec[R][i].vec_in=pb_vec[R][i].vec_out="";
+				pb_vec[R][i].hmw=pb_vec[R][i].rhmw=pb_vec[R][i].XOR_num_in=pb_vec[R][i].XOR_num_out=pb_vec[R][i].XOR_delay_in=pb_vec[R][i].XOR_delay_out=pb_vec[R][i].XOR_num_all=pb_vec[R][i].XOR_delay_all=0;
+			}
+		cnt=0;
+		for(int R=1;R<=255;R++)
+			genexpr(R);
+		int Max_ele = 256;
+		for(int i = 2; i < Max_ele; i++)
 		{
-			a[1] = j;
-			inverse_vec(a);
+			a[0] = i;
+			for(int j = i; j < Max_ele; j++)
+			{
+				a[1] = j;
+				inverse_vec(a);
+			}
+		}
+		cout<<cnt<<endl;
+		for(int R=1;R<=255;R++)
+		{
+			sort(pb_vec[R], pb_vec[R] + cnt, cmp);
+			if(cnt>0&&pb_vec[R][0].XOR_num_all<=488 &&pb_vec[R][0].XOR_delay_all<=7)
+				fout<<endl<<endl<<"******************"<<f[0]<<"******************"<<R<<"******************"<<endl<<endl;
+			for(int i = 0; i < cnt; i++)
+			{
+				if(pb_vec[R][i].XOR_num_all <= 488 && pb_vec[R][i].XOR_delay_all <= 7)  // 152 + 440
+					fout << pb_vec[R][i].vec_in << pb_vec[R][i].XOR_num_in << " " << pb_vec[R][i].XOR_delay_in << " & "
+						<< pb_vec[R][i].vec_out << pb_vec[R][i].XOR_num_out << " " << pb_vec[R][i].XOR_delay_out << " & "
+						<< pb_vec[R][i].XOR_num_all << " " << pb_vec[R][i].XOR_delay_all << endl;
+			}
 		}
 	}
-
-	sort(pb_vec, pb_vec + cnt, cmp);
-
-	for(int i = 0; i < cnt; i++)
-	{
-		if(pb_vec[i].XOR_num_all <= 592 && pb_vec[i].XOR_delay_all <= 8)  // 152 + 440
-			fout << pb_vec[i].vec_in << pb_vec[i].XOR_num_in << " " << pb_vec[i].XOR_delay_in << " & "
-			     << pb_vec[i].vec_out << pb_vec[i].XOR_num_out << " " << pb_vec[i].XOR_delay_out << " & "
-			 	 << pb_vec[i].XOR_num_all << " " << pb_vec[i].XOR_delay_all << "\n";
-	}
+	
 
 	fout.close();
 	

@@ -34,7 +34,7 @@ int DWSZ, BLK_NUM, Highest_time_of_f;
 
 BYTE TBL[65536], TBH[65536];
 
-#define SET_BASIC_PARAMETERS	{ 	f[0] = 357; Highest_time_of_f = 8;					\
+#define SET_BASIC_PARAMETERS	{ 	f[0] = 451 ; Highest_time_of_f = 8;					\
 								if ( 0 != (N%W) ) DWSZ = ((N/W) + 1); else DWSZ=N/W;	\
 								if ( 0 == (N % BLK_SZ) )								\
 								  BLK_NUM = ((N/BLK_SZ));								\
